@@ -4,7 +4,6 @@ import os
 import json
 from io import StringIO
 
-## Climate Data Cube Yearly Slices of Observations
 sites = []
 sites_dict = {}
 url = "https://data.airquality.nsw.gov.au/api/Data/get_SiteDetails"

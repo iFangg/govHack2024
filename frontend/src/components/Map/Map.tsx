@@ -39,7 +39,7 @@ export default function Map({ data }: MapProps) {
       .append("path")             // add an empty path to the SVG for each missing entry...
       .attr("d", pathGenerator)   // fill by actually converting GeoJSON to SVG path.
       .attr("fill", "#cccccc")    // fill color for each feature
-      .on("mouseover", function (d) { // tooltip stuff
+      .on("mouseover", function (e, d) { // tooltip stuff
         tooltip.style('visibility', 'visible')
           .text(d.properties ? d.properties.LGA_NAME24 : "Hidden spot?");
         d3.select(this).attr("fill", "#ffcc00");

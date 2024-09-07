@@ -1,2 +1,2 @@
 backend/venv
-backend/__pycache__
+backend/data/solcast_key.txt

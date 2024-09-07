@@ -1,6 +1,5 @@
 import requests
 import pandas as pd
-import os
 import json
 from io import StringIO
 

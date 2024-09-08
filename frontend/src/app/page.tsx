@@ -1,6 +1,6 @@
 import Map from "@/components/Map/Map";
 import { FeatureCollection, Geometry } from "geojson"; 
-import data from "@/assets/SAL_2021_AUST_GDA94.json";
+import data from "@/assets/LGA_2024_AUST_GDA2020.json";
 
 export default function Home() {
   const geoData = data as FeatureCollection<Geometry>;

@@ -41,7 +41,7 @@ export default function Map({ data }: MapProps) {
       .attr("fill", "#cccccc")    // fill color for each feature
       .on("mouseover", function (e, d) { // tooltip stuff
         tooltip.style('visibility', 'visible')
-          .text(d.properties ? d.properties.SAL_NAME21 : "Hidden spot?");
+          .text(d.properties ? d.properties.LGA_NAME24 : "Hidden spot?");
         d3.select(this).attr("fill", "#ffcc00");
       })
       .on("mousemove", function (e) {

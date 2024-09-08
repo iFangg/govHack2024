@@ -1,30 +1,82 @@
+import os
 import requests
-import json
 import pandas as pd
-from io import StringIO
+from datetime import datetime, timedelta
 
-api_key = ""
-with open(f"backend/data/solcast_key.txt", "r") as f:
-    api_key = f.read()
+def fetch_irradiance_data(path: str='backend/data/datasets/', output_csv: str='nsw_irradiance.csv') -> bool:
+    """
+    Save the average Direct Normal Irradiance (DNI) irradiance data for each suburb in NSW and save the results in <output_csv>.
+    Data source: Solcast - [ https://docs.solcast.com.au/ ].
+    """
 
-url = f"https://api.solcast.com.au/data/historic/radiation_and_weather?latitude=-33.86882&longitude=151.209295&azimuth=44&tilt=90&start=2022-10-25T14:45:00.000Z&duration=P1D&format=json&time_zone=utc&api_key={api_key}"
+    # Get API key
+    try:
+        api_key = os.environ.get('SOLCAST_API_KEY')
+    except KeyError:
+        print("Error: Please set the environment variable SOLCAST_API_KEY")
+        return False
 
-payload={}
-headers = {}
+    # Fetch suburb data
+    suburbs = fetch_nsw_suburbs()
+    if suburbs is None:
+        print("Error: Unable to fetch NSW suburbs")
+        return False
 
-response = requests.request("GET", url, headers=headers, data=payload)
+    suburb_irradiance = []
 
-# print(response.text)
-time_periods = {}
-data = response.json()['estimated_actuals']
-for item in data:
-    if item['period_end'] not in time_periods:
-        time_periods[item['period_end']] = item.copy()
-        time_periods[item['period_end']].pop('period_end', None)
+    # Initialise date time variables
+    total_time_years = 1
+    items_count = 0
+    duration_days = 31
+    duration = f'P{duration_days}D'
+    period = 'PT1H'
+    current_date = datetime.now()
+    end = current_date.replace(year=current_date.year - total_time_years)
 
-    print(item)
+    headers = {'Accept': 'application/json'}
 
-df = pd.json_normalize(data)
-df.to_csv('backend/data/datasets/nsw_irradiance.csv', index=False)
+    for suburb in suburbs:
+        irradiance_sum = 0
+
+        start = current_date - timedelta(days=duration_days + 1)
+        while start >= end:
+            url = f"https://api.solcast.com.au/data/historic/radiation_and_weather?latitude={suburb['latitude']}&longitude={suburb['longitude']}&start={start}&period={period}&duration={duration}&api_key={api_key}"
+            response = requests.request("GET", url, headers=headers)
+
+            if response.status_code != 200:
+                print(f"Error: {response.status_code}, {response.text}")
+                return False
+
+            data = response.json()['estimated_actuals']
+            for item in data:
+                irradiance_sum += item['dni']
+                items_count += 1
+
+            start -= timedelta(days=duration_days)
+
+        suburb_irradiance.append((suburb['name'], irradiance_sum / items_count if items_count > 0 else 0))
+
+    irradiance_df = pd.DataFrame(suburb_irradiance, columns=['Suburb', 'Irradiance'])
+    output_path = os.path.join(path, output_csv)
+    irradiance_df.to_csv(output_path, index=False)
+
+    return True
 
 
+def fetch_nsw_suburbs():
+    """
+    Get coordinates of all NSW suburbs using Postcode API - [ https://postcodeapi.com.au/ ]
+    """
+
+    url = 'https://v0.postcodeapi.com.au/suburbs?state=NSW'
+    headers = {'Accept': 'application/json'}
+
+    response = requests.request("GET", url, headers=headers)
+    if response.status_code == 200:
+        return response.json()
+    else:
+        print(f"Error: {response.status_code}, {response.text}")
+        return None
+
+
+fetch_irradiance_data()

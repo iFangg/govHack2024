@@ -1,6 +1,5 @@
 import os
 import requests
-import json
 import pandas as pd
 from datetime import datetime, timedelta
 
@@ -18,43 +17,36 @@ def fetch_irradiance_data(path: str='backend/data/datasets/', output_csv: str='n
         return False
 
     # Initialise date time variables
-    total_time_years = 1
-    items_count = 0
     duration_days = 31
     duration = f'P{duration_days}D'
     period = 'PT1H'
     current_date = datetime.now()
-    end = current_date.replace(year=current_date.year - total_time_years)
 
     headers = {'Accept': 'application/json'}
 
     lga_irradiance = {}
     lga_df = pd.read_csv('backend/data/datasets/lga_coordinates.csv')
-    
-    for row in lga_df.iterrows():
+
+    for _, row in lga_df.iterrows():
         lga_irradiance[row['lga_name']] = 0
 
-    for index,row in lga_df.iterrows():
+    for _,row in lga_df.iterrows():
         lga_name = row['lga_name']
         lga_lon = row['lon']
         lga_lat = row['lat']
-        
+
         start = current_date - timedelta(days=duration_days + 1)
-        while start >= end:
-            url = f"https://api.solcast.com.au/data/historic/radiation_and_weather?latitude={lga_lat}&longitude={lga_lon}&start={start}&period={period}&duration={duration}&api_key={api_key}"
-            response = requests.request("GET", url, headers=headers)
+        url = f"https://api.solcast.com.au/data/historic/radiation_and_weather?latitude={lga_lat}&longitude={lga_lon}&start={start}&period={period}&duration={duration}&api_key={api_key}"
+        response = requests.request("GET", url, headers=headers)
 
-            if response.status_code != 200:
-                print(f"Error: {response.status_code}, {response.text}")
-                return False
+        if response.status_code != 200:
+            print(f"Error: {response.status_code}, {response.text}")
+            return False
 
-            data = response.json()['estimated_actuals']
-            for item in data:
-                irradiance_sum += item['dni']
-                items_count += 1
-
-            start -= timedelta(days=duration_days)
-
+        data = response.json()['estimated_actuals']
+        for item in data:
+            irradiance_sum += item['dni']
+        items_count = len(data)
 
         lga_irradiance[lga_name] = (irradiance_sum / items_count if items_count > 0 else 0)
 
@@ -77,19 +69,16 @@ def fetch_nsw_suburbs(output_csv_path: str):
     lga_list = {}
 
     for item in data:
-        lga = item['lga_name']
-        lga = lga.strip(' Council')
-
+        lga = item['abb_name']
         if lga not in lga_list:
             lga_list[lga] = item['geo_point_2d']
 
-    # df = pd.DataFrame(lga_list).transpose()
     df = pd.DataFrame.from_dict(lga_list, orient='index')
-    print(df.head(10))
-    df.to_csv(output_csv_path, index=True)
+    df['lga_name'] = df.index
+    df.to_csv(output_csv_path, index=False)
 
     return lga_list
 
 
-# fetch_nsw_suburbs('backend/data/datasets/lga_coordinates.csv')
-fetch_irradiance_data();
+fetch_nsw_suburbs('backend/data/datasets/lga_coordinates.csv')
+# fetch_irradiance_data()
